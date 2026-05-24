@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a73e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>工资计算器</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+.container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+
+/* Header */
+.header { background: linear-gradient(135deg, #1a73e8, #1557b0); color: #fff; padding: 20px 24px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.header h1 { font-size: 22px; font-weight: 600; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.year-nav { display: flex; align-items: center; gap: 8px; }
+.year-nav button { width: 32px; height: 32px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: #fff; border-radius: 8px; cursor: pointer; font-size: 16px; transition: background 0.2s; }
+.year-nav button:hover { background: rgba(255,255,255,0.25); }
+.year-nav .year-display { font-size: 20px; font-weight: 700; min-width: 70px; text-align: center; }
+.header-right { display: flex; gap: 8px; }
+.header-right button { padding: 8px 16px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: #fff; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
+.header-right button:hover { background: rgba(255,255,255,0.25); }
+.header-right button.primary { background: #fff; color: #1a73e8; border: none; font-weight: 600; }
+
+/* Month Tabs */
+.month-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+.month-tab { padding: 8px 16px; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; white-space: nowrap; }
+.month-tab:hover { border-color: #1a73e8; color: #1a73e8; }
+.month-tab.active { background: #1a73e8; color: #fff; border-color: #1a73e8; font-weight: 600; }
+
+/* Main Layout */
+.main { display: grid; grid-template-columns: 1fr 420px; gap: 16px; }
+@media (max-width: 1100px) { .main { grid-template-columns: 1fr; } }
+
+/* Card */
+.card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+.card-title .period { font-size: 13px; color: #888; font-weight: 400; }
+
+/* Calendar */
+.calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 13px; color: #888; margin-bottom: 4px; }
+.calendar-header span:first-child { color: #e74c3c; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.day-cell { border: 1px solid #e8eaed; border-radius: 8px; padding: 5px 4px; text-align: center; font-size: 12px; min-height: 95px; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: all 0.15s; position: relative; }
+.day-cell:hover { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+.day-cell.out-of-range { opacity: 0.3; pointer-events: none; }
+.day-cell.weekend { background: #fff8e1; }
+.day-cell.holiday { background: #ffebee; }
+.day-cell.workday { background: #fff; }
+.day-cell .day-num { font-weight: 600; font-size: 14px; }
+.day-cell .day-weekday { font-size: 10px; color: #999; }
+.day-cell.weekend .day-num { color: #e67e22; }
+.day-cell.holiday .day-num { color: #e74c3c; }
+.day-cell.today { border: 2px solid #1a73e8; }
+.day-type-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; cursor: pointer; user-select: none; transition: all 0.15s; white-space: nowrap; }
+.day-type-badge.type-workday { background: #e8f5e9; color: #2e7d32; }
+.day-type-badge.type-weekend { background: #fff3e0; color: #e65100; }
+.day-type-badge.type-holiday { background: #ffebee; color: #c62828; }
+.day-type-badge.type-manual { border: 1px dashed #999; }
+.day-cell .ot-input { width: 52px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-size: 12px; }
+.day-cell .ot-input:focus { outline: none; border-color: #1a73e8; }
+.day-cell .ot-pay { font-size: 10px; color: #1a73e8; font-weight: 500; }
+.day-cell .holiday-name { font-size: 10px; line-height: 1.2; font-weight: 500; padding: 0 2px; }
+.day-cell .holiday-name.statutory { color: #c62828; }
+.day-cell .holiday-name.non-statutory { color: #e67e22; }
+.day-cell .holiday-name.makeup { color: #888; }
+.type-popup { position: fixed; background: #fff; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); z-index: 9999; padding: 6px; min-width: 105px; }
+.type-popup-item { padding: 7px 14px; cursor: pointer; font-size: 12px; border-radius: 6px; white-space: nowrap; transition: background 0.12s; display: flex; align-items: center; gap: 6px; }
+.type-popup-item:hover { background: #f0f7ff; }
+.type-popup-item.checked { background: #e8f0fe; color: #1a73e8; font-weight: 600; }
+.type-popup-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.type-popup-dot.workday { background: #4caf50; }
+.type-popup-dot.weekend { background: #ff9800; }
+.type-popup-dot.holiday { background: #e74c3c; }
+.legend { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: #666; align-items: center; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #ddd; }
+.legend-dot.workday { background: #fff; }
+.legend-dot.weekend { background: #fff8e1; }
+.legend-dot.holiday { background: #ffebee; }
+
+/* Overtime Summary */
+.ot-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+.ot-summary-item { text-align: center; min-width: 80px; }
+.ot-summary-item .label { font-size: 12px; color: #888; }
+.ot-summary-item .value { font-size: 18px; font-weight: 700; color: #1a73e8; }
+
+/* Salary Panel */
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+.form-group input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.1); }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
+.input-suffix { position: relative; }
+.input-suffix input { padding-right: 32px; }
+.input-suffix .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: #999; }
+.hourly-rate { font-size: 13px; color: #1a73e8; margin-top: -6px; margin-bottom: 10px; font-weight: 500; }
+
+.auto-calc { background: #f0f7ff; padding: 8px 12px; border-radius: 6px; font-size: 13px; color: #1a73e8; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.auto-calc .auto-value { font-size: 16px; font-weight: 700; }
+
+.dynamic-items { margin-bottom: 10px; }
+.dynamic-item { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.dynamic-item input { flex: 1; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+.dynamic-item input:focus { outline: none; border-color: #1a73e8; }
+.dynamic-item .remove-btn { width: 28px; height: 28px; border: none; background: #ffebee; color: #e74c3c; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.add-item-btn { font-size: 12px; padding: 4px 10px; border: 1px dashed #1a73e8; background: none; color: #1a73e8; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.add-item-btn:hover { background: #f0f7ff; }
+
+.total-box { background: linear-gradient(135deg, #e8f0fe, #f0f7ff); padding: 16px; border-radius: 10px; text-align: center; margin-top: 12px; }
+.total-box .total-label { font-size: 13px; color: #666; }
+.total-box .total-value { font-size: 28px; font-weight: 700; color: #1a73e8; margin: 4px 0; }
+.total-box .total-detail { font-size: 12px; color: #999; }
+
+.actual-paid { margin-top: 12px; }
+.actual-paid label { font-size: 13px; color: #666; display: block; margin-bottom: 4px; }
+.actual-paid input { width: 100%; padding: 8px 12px; border: 2px solid #1a73e8; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; }
+.actual-paid input:focus { outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
+
+.btn-row { display: flex; gap: 8px; margin-top: 16px; }
+.btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; flex: 1; }
+.btn-primary { background: #1a73e8; color: #fff; }
+.btn-primary:hover { background: #1557b0; }
+.btn-outline { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; }
+.btn-outline:hover { background: #f0f7ff; }
+
+/* Annual Summary */
+.annual-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.annual-table th { background: #f8f9fa; padding: 10px 8px; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; }
+.annual-table td { padding: 8px; text-align: center; border-bottom: 1px solid #eee; }
+.annual-table tr:hover td { background: #f8f9fa; }
+.annual-table .total-row td { font-weight: 700; border-top: 2px solid #1a73e8; background: #f0f7ff; font-size: 15px; }
+.annual-table .highlight { color: #1a73e8; font-weight: 600; }
+
+/* Toast */
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; animation: fadeInOut 2s ease; pointer-events: none; }
+@keyframes fadeInOut { 0% { opacity: 0; top: 0; } 15% { opacity: 1; top: 20px; } 75% { opacity: 1; top: 20px; } 100% { opacity: 0; top: 0; } }
+
+/* Status indicator */
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.loaded { background: #4caf50; }
+.status-dot.loading { background: #ff9800; animation: pulse 1s infinite; }
+.status-dot.error { background: #f44336; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.api-status { font-size: 12px; color: #999; display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-left">
+      <h1>工资计算器</h1>
+      <div class="year-nav">
+        <button onclick="changeYear(-1)" title="上一年">&lt;</button>
+        <span class="year-display" id="yearDisplay">2026</span>
+        <button onclick="changeYear(1)" title="下一年">&gt;</button>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="api-status" id="apiStatus"><span class="status-dot" id="statusDot"></span><span id="statusText">就绪</span></span>
+      <button onclick="refreshHolidays()">刷新日历</button>
+      <button class="primary" onclick="saveAll()">保存数据</button>
+    </div>
+  </div>
+
+  <div class="month-tabs" id="monthTabs"></div>
+
+  <div class="main">
+    <div class="left-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>加班登记</span>
+          <span class="period" id="periodLabel"></span>
+        </div>
+        <div class="calendar-header">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="legend">
+          <span style="font-weight:500;">图例：</span>
+          <span class="legend-item"><span class="legend-dot workday"></span> 工作日×1.5</span>
+          <span class="legend-item"><span class="legend-dot weekend"></span> 周末×2.0</span>
+          <span class="legend-item"><span class="legend-dot holiday"></span> 节假日×3.0</span>
+          <span style="color:#999;">| 点击日期标签可弹出菜单自由切换类型</span>
+        </div>
+      </div>
+
+      <div class="ot-summary" id="otSummary">
+        <div class="ot-summary-item">
+          <div class="label">加班总小时</div>
+          <div class="value" id="totalOvertimeHours">0.0h</div>
+        </div>
+        <div class="ot-summary-item">
+          <div class="label">工作日加班 (×1.5)</div>
+          <div class="value" id="workdayOtPay">¥0</div>
+        </div>
+        <div class="ot-summary-item">
+          <div class="label">周末加班 (×2.0)</div>
+          <div class="value" id="weekendOtPay">¥0</div>
+        </div>
+        <div class="ot-summary-item">
+          <div class="label">节假日加班 (×3.0)</div>
+          <div class="value" id="holidayOtPay">¥0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="card">
+        <div class="card-title">薪资项目</div>
+
+        <div class="form-group">
+          <label>底薪（元）</label>
+          <input type="number" id="baseSalary" placeholder="输入底薪" step="0.01" oninput="onSalaryInput()">
+        </div>
+        <div class="hourly-rate" id="hourlyRate">时薪：¥0.00/小时（底薪÷21.75÷8）</div>
+
+        <div class="auto-calc">
+          <span>加班费（自动计算）</span>
+          <span class="auto-value" id="autoOtPay">¥0.00</span>
+        </div>
+
+        <div class="form-group">
+          <label>绩效 / 奖金</label>
+          <input type="number" id="performance" placeholder="输入绩效" step="0.01" oninput="onSalaryInput()">
+        </div>
+
+        <div class="form-group">
+          <label>公积金（个人缴纳，通常为扣除项）</label>
+          <input type="number" id="housingFund" placeholder="输入公积金" step="0.01" oninput="onSalaryInput()">
+        </div>
+
+        <div class="form-group">
+          <label>社保（个人缴纳，通常为扣除项）</label>
+          <input type="number" id="socialInsurance" placeholder="输入社保" step="0.01" oninput="onSalaryInput()">
+        </div>
+
+        <div class="dynamic-items" id="otherAdditions">
+          <!-- Dynamic addition items -->
+        </div>
+        <button class="add-item-btn" onclick="addCustomItem('addition')">+ 添加加项（餐补、交通补贴等）</button>
+
+        <div class="dynamic-items" id="otherDeductions" style="margin-top: 10px;">
+          <!-- Dynamic deduction items -->
+        </div>
+        <button class="add-item-btn" onclick="addCustomItem('deduction')">+ 添加扣项（其他扣除）</button>
+
+        <div class="total-box">
+          <div class="total-label">本月应发合计</div>
+          <div class="total-value" id="monthlyTotal">¥0.00</div>
+          <div class="total-detail" id="totalDetail"></div>
+        </div>
+
+        <div class="actual-paid">
+          <label>实际发放工资（手动填写）</label>
+          <input type="number" id="actualPaid" placeholder="输入实际发放金额" step="0.01" oninput="onActualPaidChange()">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="showIncomeDetail()">查看收入明细</button>
+          <button class="btn btn-primary" onclick="saveAll()">保存本月数据</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span id="annualTitle">年度收入汇总</span>
+    </div>
+    <div style="overflow-x: auto;">
+      <table class="annual-table" id="annualTable">
+        <!-- Rendered by JS -->
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+<div id="typePopup" class="type-popup" style="display:none;" onclick="event.stopPropagation()"></div>
+
+<script>
+// ====== CONSTANTS ======
+const STATUTORY_HOLIDAY_NAMES = ['元旦', '春节', '清明节', '劳动节', '端午节', '中秋节', '国庆节'];
+const HOLIDAY_API = 'https://timor.tech/api/holiday/year/';
+const STORAGE_KEY = 'salary_calculator_data';
+const HOURLY_DAYS = 21.75;
+const WORK_HOURS = 8;
+const MULTIPLIERS = { workday: 1.5, weekend: 2.0, holiday: 3.0 };
+
+// ====== STATE ======
+let state = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  holidays: {},       // { 'YYYY-MM-DD': { name, isHoliday, isMakeupWorkday } }
+  holidayYears: {},   // { year: full API response }
+  overtimeRecords: {},// { 'YYYY-MM-DD': { hours: float, manualType: 'workday'|'weekend'|'holiday'|null } }
+  monthlySettings: {},// { 'YYYY-MM': { baseSalary, performance, housingFund, socialInsurance, additions: [{name,amount}], deductions: [{name,amount}], actualPaid } }
+};
+
+// ====== STORAGE ======
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      year: state.year,
+      month: state.month,
+      holidays: state.holidays,
+      holidayYears: state.holidayYears,
+      overtimeRecords: state.overtimeRecords,
+      monthlySettings: state.monthlySettings,
+    }));
+  } catch(e) { console.warn('Storage full or unavailable:', e); }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      state.year = saved.year || state.year;
+      state.month = saved.month || state.month;
+      state.holidays = saved.holidays || {};
+      state.holidayYears = saved.holidayYears || {};
+      state.overtimeRecords = saved.overtimeRecords || {};
+      state.monthlySettings = saved.monthlySettings || {};
+    }
+  } catch(e) { console.warn('Failed to load state:', e); }
+}
+
+// ====== HELPERS ======
+function fmt(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function fmtMoney(n) {
+  if (n == null || isNaN(n)) return '¥0.00';
+  return '¥' + Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function monthKey(y, m) { return `${y}-${String(m).padStart(2, '0')}`; }
+
+function getPeriodRange(year, month) {
+  let prevMonth = month - 1;
+  let prevYear = year;
+  if (prevMonth === 0) { prevMonth = 12; prevYear = year - 1; }
+  const start = new Date(prevYear, prevMonth - 1, 26);
+  const end = new Date(year, month - 1, 25);
+  return { start, end };
+}
+
+function getDayOfWeek(date) {
+  const d = date.getDay();
+  return d === 0 ? 7 : d; // Mon=1 ... Sun=7
+}
+
+function isWeekend(date) {
+  const d = date.getDay();
+  return d === 0 || d === 6;
+}
+
+function isStatutoryHoliday(name) {
+  if (!name) return false;
+  return STATUTORY_HOLIDAY_NAMES.some(h => name.includes(h));
+}
+
+// ====== DAY TYPE DETECTION ======
+function getAutoDayType(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  const dayOfWeek = date.getDay();
+  const isWE = dayOfWeek === 0 || dayOfWeek === 6;
+
+  const holidayInfo = state.holidays[dateStr];
+  if (holidayInfo) {
+    if (holidayInfo.isHoliday && holidayInfo.isStatutory) return 'holiday';
+    if (holidayInfo.isHoliday && !holidayInfo.isStatutory) return 'weekend'; // 调休休息日
+    if (holidayInfo.isMakeupWorkday) return 'workday'; // 调休上班日
+  }
+
+  return isWE ? 'weekend' : 'workday';
+}
+
+function getEffectiveDayType(dateStr) {
+  const record = state.overtimeRecords[dateStr];
+  if (record && record.manualType) return record.manualType;
+  return getAutoDayType(dateStr);
+}
+
+function getTypeLabel(type) {
+  const map = { workday: '工作日', weekend: '周末', holiday: '节假日' };
+  return map[type] || type;
+}
+
+// ====== HOLIDAY API ======
+async function fetchHolidays(year) {
+  updateApiStatus('loading', '加载中...');
+  try {
+    const resp = await fetch(HOLIDAY_API + year);
+    const data = await resp.json();
+    if (data.code === 0 && data.holiday) {
+      state.holidayYears[year] = data.holiday;
+      // Parse into state.holidays
+      for (const [key, info] of Object.entries(data.holiday)) {
+        const dateStr = `${year}-${key}`;
+        const isStatutory = isStatutoryHoliday(info.name);
+        if (info.holiday === true) {
+          state.holidays[dateStr] = { name: info.name, isHoliday: true, isMakeupWorkday: false, isStatutory };
+        } else if (info.holiday === false) {
+          state.holidays[dateStr] = { name: info.name, isHoliday: false, isMakeupWorkday: true, isStatutory: false };
+        }
+      }
+      updateApiStatus('loaded', `${year}年日历已加载`);
+      return true;
+    } else {
+      updateApiStatus('error', 'API返回异常');
+      return false;
+    }
+  } catch(e) {
+    console.warn('Failed to fetch holidays:', e);
+    updateApiStatus('error', '联网失败，使用默认日历');
+    return false;
+  }
+}
+
+function updateApiStatus(status, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot ' + status;
+  txt.textContent = text;
+}
+
+async function refreshHolidays() {
+  const year = state.year;
+  updateApiStatus('loading', '更新中...');
+  // Clear existing holidays for this year to refresh
+  for (const key of Object.keys(state.holidays)) {
+    if (key.startsWith(String(year))) delete state.holidays[key];
+  }
+  delete state.holidayYears[year];
+  const ok = await fetchHolidays(year);
+  if (ok) {
+    saveState();
+    toast('日历数据已更新');
+  } else {
+    toast('日历更新失败，使用默认周末判断');
+  }
+  renderAll();
+}
+
+// ====== TOAST ======
+function toast(msg) {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 2100);
+}
+
+// ====== CALCULATIONS ======
+function getHourlyRate() {
+  const settings = getMonthlySettings();
+  const base = parseFloat(settings.baseSalary) || 0;
+  if (base <= 0) return 0;
+  return base / HOURLY_DAYS / WORK_HOURS;
+}
+
+function getOvertimePayForDate(dateStr, hourlyRate) {
+  const record = state.overtimeRecords[dateStr];
+  const hours = record ? (parseFloat(record.hours) || 0) : 0;
+  if (hours <= 0 || hourlyRate <= 0) return { hours: 0, pay: 0, type: null };
+  const type = getEffectiveDayType(dateStr);
+  const multiplier = MULTIPLIERS[type];
+  const pay = hourlyRate * hours * multiplier;
+  return { hours, pay, type };
+}
+
+function getPeriodOvertimeSummary() {
+  const { start, end } = getPeriodRange(state.year, state.month);
+  const hourlyRate = getHourlyRate();
+  let totalHours = 0;
+  let workdayPay = 0;
+  let weekendPay = 0;
+  let holidayPay = 0;
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = fmt(d);
+    const { hours, type } = getOvertimePayForDate(dateStr, hourlyRate);
+    totalHours += hours;
+    const multiplier = MULTIPLIERS[type] || 0;
+    const pay = hourlyRate * hours * multiplier;
+    if (type === 'workday') workdayPay += pay;
+    else if (type === 'weekend') weekendPay += pay;
+    else if (type === 'holiday') holidayPay += pay;
+  }
+
+  return {
+    totalHours,
+    workdayPay,
+    weekendPay,
+    holidayPay,
+    totalOtPay: workdayPay + weekendPay + holidayPay,
+  };
+}
+
+function getMonthlySettings() {
+  const key = monthKey(state.year, state.month);
+  if (!state.monthlySettings[key]) {
+    state.monthlySettings[key] = {
+      baseSalary: '',
+      performance: '',
+      housingFund: '',
+      socialInsurance: '',
+      additions: [],
+      deductions: [],
+      actualPaid: '',
+    };
+  }
+  return state.monthlySettings[key];
+}
+
+function calculateMonthlyTotal() {
+  const settings = getMonthlySettings();
+  const base = parseFloat(settings.baseSalary) || 0;
+  const perf = parseFloat(settings.performance) || 0;
+  const hf = parseFloat(settings.housingFund) || 0;
+  const si = parseFloat(settings.socialInsurance) || 0;
+  const { totalOtPay } = getPeriodOvertimeSummary();
+
+  let additionsTotal = 0;
+  for (const item of settings.additions) {
+    additionsTotal += parseFloat(item.amount) || 0;
+  }
+
+  let deductionsTotal = 0;
+  for (const item of settings.deductions) {
+    deductionsTotal += parseFloat(item.amount) || 0;
+  }
+
+  const total = base + perf + totalOtPay + additionsTotal - hf - si - deductionsTotal;
+  return {
+    base, perf, hf, si, totalOtPay, additionsTotal, deductionsTotal, total,
+    additions: settings.additions,
+    deductions: settings.deductions,
+  };
+}
+
+function calculateAnnualTotal() {
+  let total = 0;
+  const months = [];
+  for (let m = 1; m <= 12; m++) {
+    const key = monthKey(state.year, m);
+    const settings = state.monthlySettings[key];
+    const actualPaid = settings ? (parseFloat(settings.actualPaid) || 0) : 0;
+    total += actualPaid;
+    months.push({ month: m, key, actualPaid, settings: settings || null });
+  }
+  return { total, months };
+}
+
+// ====== RENDER ======
+function renderMonthTabs() {
+  const container = document.getElementById('monthTabs');
+  let html = '';
+  for (let m = 1; m <= 12; m++) {
+    const cls = m === state.month ? 'month-tab active' : 'month-tab';
+    html += `<button class="${cls}" onclick="selectMonth(${m})">${m}月</button>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderCalendar() {
+  const { start, end } = getPeriodRange(state.year, state.month);
+  const hourlyRate = getHourlyRate();
+  const today = fmt(new Date());
+
+  document.getElementById('periodLabel').textContent = `${fmt(start)} ~ ${fmt(end)}`;
+
+  const gridStart = new Date(start);
+  const startDow = getDayOfWeek(gridStart);
+  gridStart.setDate(gridStart.getDate() - (startDow - 1));
+
+  const gridEnd = new Date(end);
+  const endDow = getDayOfWeek(gridEnd);
+  gridEnd.setDate(gridEnd.getDate() + (7 - endDow));
+
+  let html = '';
+  const current = new Date(gridStart);
+
+  while (current <= gridEnd) {
+    const dateStr = fmt(current);
+    const inRange = current >= start && current <= end;
+    const dayType = getEffectiveDayType(dateStr);
+    const record = state.overtimeRecords[dateStr];
+    const otHours = record ? (record.hours || '') : '';
+    const isManual = record && record.manualType;
+    const isToday = dateStr === today;
+    const holidayInfo = state.holidays[dateStr];
+
+    let cellClass = 'day-cell';
+    if (!inRange) cellClass += ' out-of-range';
+    else cellClass += ' ' + dayType;
+    if (isToday) cellClass += ' today';
+
+    const dayNum = current.getDate();
+    const weekdays = ['', '一', '二', '三', '四', '五', '六', '日'];
+    const weekday = weekdays[getDayOfWeek(current)];
+
+    // Build holiday name display
+    let holidayNameHtml = '';
+    if (holidayInfo && holidayInfo.name) {
+      let nameClass = 'holiday-name';
+      if (holidayInfo.isStatutory) {
+        nameClass += ' statutory';
+      } else if (holidayInfo.isMakeupWorkday) {
+        nameClass += ' makeup';
+      } else if (holidayInfo.isHoliday) {
+        nameClass += ' non-statutory';
+      }
+      holidayNameHtml = `<span class="${nameClass}">${holidayInfo.name}</span>`;
+    }
+
+    let payDisplay = '';
+    if (inRange && otHours && parseFloat(otHours) > 0) {
+      const multiplier = MULTIPLIERS[dayType];
+      const pay = hourlyRate * parseFloat(otHours) * multiplier;
+      payDisplay = `<span class="ot-pay">${fmtMoney(pay)}</span>`;
+    }
+
+    let badgeClass = 'day-type-badge type-' + dayType;
+    if (isManual) badgeClass += ' type-manual';
+
+    html += `<div class="${cellClass}" data-date="${dateStr}">
+      <span class="day-num">${dayNum}</span>
+      <span class="day-weekday">周${weekday}</span>
+      ${holidayNameHtml}
+      <span class="${badgeClass}" onclick="event.stopPropagation(); showTypePopup('${dateStr}', event)" title="点击切换日期类型">${getTypeLabel(dayType)}${isManual ? '*' : ''} ▾</span>
+      ${inRange ? `<input class="ot-input" type="number" step="0.5" min="0" max="24" placeholder="0" value="${otHours}" oninput="onOvertimeInput('${dateStr}', this.value)" onclick="event.stopPropagation()">` : ''}
+      ${payDisplay}
+    </div>`;
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  document.getElementById('calendarGrid').innerHTML = html;
+}
+
+function renderOtSummary() {
+  const { totalHours, workdayPay, weekendPay, holidayPay } = getPeriodOvertimeSummary();
+  document.getElementById('totalOvertimeHours').textContent = totalHours.toFixed(1) + 'h';
+  document.getElementById('workdayOtPay').textContent = fmtMoney(workdayPay);
+  document.getElementById('weekendOtPay').textContent = fmtMoney(weekendPay);
+  document.getElementById('holidayOtPay').textContent = fmtMoney(holidayPay);
+}
+
+function renderSalaryPanel() {
+  const settings = getMonthlySettings();
+  const hourlyRate = getHourlyRate();
+  const { totalOtPay } = getPeriodOvertimeSummary();
+  const breakdown = calculateMonthlyTotal();
+
+  document.getElementById('baseSalary').value = settings.baseSalary;
+  document.getElementById('performance').value = settings.performance;
+  document.getElementById('housingFund').value = settings.housingFund;
+  document.getElementById('socialInsurance').value = settings.socialInsurance;
+  document.getElementById('actualPaid').value = settings.actualPaid;
+
+  document.getElementById('hourlyRate').textContent = hourlyRate > 0
+    ? `时薪：${fmtMoney(hourlyRate)}/小时（底薪÷21.75÷8）`
+    : '时薪：¥0.00/小时（请输入底薪）';
+
+  document.getElementById('autoOtPay').textContent = fmtMoney(totalOtPay);
+  document.getElementById('monthlyTotal').textContent = fmtMoney(breakdown.total);
+
+  const parts = [];
+  if (breakdown.base) parts.push(`底薪 ${fmtMoney(breakdown.base)}`);
+  if (breakdown.perf) parts.push(`绩效 ${fmtMoney(breakdown.perf)}`);
+  if (breakdown.totalOtPay) parts.push(`加班 ${fmtMoney(breakdown.totalOtPay)}`);
+  if (breakdown.additionsTotal) parts.push(`加项 ${fmtMoney(breakdown.additionsTotal)}`);
+  if (breakdown.hf) parts.push(`公积金 -${fmtMoney(breakdown.hf)}`);
+  if (breakdown.si) parts.push(`社保 -${fmtMoney(breakdown.si)}`);
+  if (breakdown.deductionsTotal) parts.push(`扣项 -${fmtMoney(breakdown.deductionsTotal)}`);
+  document.getElementById('totalDetail').textContent = parts.join(' | ') || '—';
+
+  // Render dynamic items
+  renderDynamicItems('otherAdditions', settings.additions, 'addition');
+  renderDynamicItems('otherDeductions', settings.deductions, 'deduction');
+}
+
+function renderDynamicItems(containerId, items, type) {
+  const container = document.getElementById(containerId);
+  let html = '';
+  items.forEach((item, idx) => {
+    html += `<div class="dynamic-item">
+      <input type="text" placeholder="${type === 'addition' ? '加项名称' : '扣项名称'}" value="${item.name || ''}" oninput="updateCustomItem('${type}', ${idx}, 'name', this.value)" style="flex:1;">
+      <input type="number" placeholder="金额" value="${item.amount || ''}" step="0.01" oninput="updateCustomItem('${type}', ${idx}, 'amount', this.value)" style="flex:1;">
+      <button class="remove-btn" onclick="removeCustomItem('${type}', ${idx})">&times;</button>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderAnnualSummary() {
+  const { total, months } = calculateAnnualTotal();
+  document.getElementById('annualTitle').textContent = `${state.year}年 年度收入汇总`;
+
+  let html = `<thead><tr>
+    <th>月份</th><th>实际发放</th><th>底薪</th><th>加班费</th><th>应发合计</th>
+  </tr></thead><tbody>`;
+
+  for (const m of months) {
+    const breakdown = m.settings ? calculateMonthlyTotalForMonth(state.year, m.month) : { total: 0, base: 0, totalOtPay: 0 };
+    const actualPaid = m.actualPaid;
+    html += `<tr>
+      <td><strong>${m.month}月</strong></td>
+      <td class="highlight">${actualPaid > 0 ? fmtMoney(actualPaid) : '—'}</td>
+      <td>${breakdown.base > 0 ? fmtMoney(breakdown.base) : '—'}</td>
+      <td>${breakdown.totalOtPay > 0 ? fmtMoney(breakdown.totalOtPay) : '—'}</td>
+      <td>${breakdown.total !== 0 ? fmtMoney(breakdown.total) : '—'}</td>
+    </tr>`;
+  }
+
+  html += `<tr class="total-row">
+    <td>年度总计</td>
+    <td class="highlight">${fmtMoney(total)}</td>
+    <td></td><td></td><td></td>
+  </tr></tbody>`;
+
+  document.getElementById('annualTable').innerHTML = html;
+}
+
+function calculateMonthlyTotalForMonth(year, month) {
+  const key = monthKey(year, month);
+  const settings = state.monthlySettings[key];
+  if (!settings) return { base: 0, totalOtPay: 0, total: 0 };
+
+  const base = parseFloat(settings.baseSalary) || 0;
+  const perf = parseFloat(settings.performance) || 0;
+  const hf = parseFloat(settings.housingFund) || 0;
+  const si = parseFloat(settings.socialInsurance) || 0;
+
+  const hourlyRate = base > 0 ? base / HOURLY_DAYS / WORK_HOURS : 0;
+
+  // Calculate overtime for this month's period
+  const { start, end } = getPeriodRange(year, month);
+  let totalOtPay = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = fmt(d);
+    const record = state.overtimeRecords[dateStr];
+    const hours = record ? (parseFloat(record.hours) || 0) : 0;
+    if (hours > 0 && hourlyRate > 0) {
+      const type = getEffectiveDayType(dateStr);
+      totalOtPay += hourlyRate * hours * MULTIPLIERS[type];
+    }
+  }
+
+  let additionsTotal = 0;
+  for (const item of (settings.additions || [])) {
+    additionsTotal += parseFloat(item.amount) || 0;
+  }
+  let deductionsTotal = 0;
+  for (const item of (settings.deductions || [])) {
+    deductionsTotal += parseFloat(item.amount) || 0;
+  }
+
+  const total = base + perf + totalOtPay + additionsTotal - hf - si - deductionsTotal;
+  return { base, totalOtPay, total };
+}
+
+function renderAll() {
+  renderMonthTabs();
+  renderCalendar();
+  renderOtSummary();
+  renderSalaryPanel();
+  renderAnnualSummary();
+  document.getElementById('yearDisplay').textContent = state.year;
+}
+
+// ====== EVENT HANDLERS ======
+async function changeYear(delta) {
+  state.year += delta;
+  await ensureHolidays();
+  renderAll();
+  saveState();
+}
+
+function selectMonth(month) {
+  state.month = month;
+  renderAll();
+  saveState();
+}
+
+let popupTargetDate = null;
+let popupDocListener = null;
+
+function showTypePopup(dateStr, event) {
+  hideTypePopup();
+  popupTargetDate = dateStr;
+
+  const popup = document.getElementById('typePopup');
+  const currentType = getEffectiveDayType(dateStr);
+  const autoType = getAutoDayType(dateStr);
+  const record = state.overtimeRecords[dateStr];
+  const isManual = record && record.manualType;
+
+  const options = [
+    { value: 'workday', label: '工作日', dot: 'workday', desc: '×1.5' },
+    { value: 'weekend', label: '周末', dot: 'weekend', desc: '×2.0' },
+    { value: 'holiday', label: '节假日', dot: 'holiday', desc: '×3.0' },
+  ];
+
+  if (isManual) {
+    options.push({ value: 'auto', label: '恢复自动', dot: '', desc: `(${getTypeLabel(autoType)})` });
+  }
+
+  let html = '';
+  for (const opt of options) {
+    const isChecked = opt.value === 'auto' ? false : (!isManual && currentType === opt.value) || (isManual && currentType === opt.value);
+    const checkedClass = isChecked ? ' checked' : '';
+    const dotHtml = opt.dot ? `<span class="type-popup-dot ${opt.dot}"></span>` : '';
+    html += `<div class="type-popup-item${checkedClass}" data-value="${opt.value}" onclick="setDayType('${dateStr}', '${opt.value}')">${dotHtml}${opt.label} <span style="color:#999;font-size:10px;">${opt.desc}</span></div>`;
+  }
+
+  popup.innerHTML = html;
+  popup.style.display = 'block';
+
+  const rect = event.target.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 4;
+  if (top + 180 > window.innerHeight) { top = rect.top - 180; }
+  if (left + 120 > window.innerWidth) { left = window.innerWidth - 130; }
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+
+  popupDocListener = function(e) {
+    if (!e.target.closest('.day-type-badge')) {
+      hideTypePopup();
+    }
+  };
+  setTimeout(() => document.addEventListener('click', popupDocListener), 0);
+}
+
+function hideTypePopup() {
+  if (popupDocListener) {
+    document.removeEventListener('click', popupDocListener);
+    popupDocListener = null;
+  }
+  document.getElementById('typePopup').style.display = 'none';
+  popupTargetDate = null;
+}
+
+function setDayType(dateStr, type) {
+  if (!state.overtimeRecords[dateStr]) {
+    state.overtimeRecords[dateStr] = { hours: '', manualType: null };
+  }
+  const record = state.overtimeRecords[dateStr];
+  if (type === 'auto') {
+    record.manualType = null;
+  } else {
+    const autoType = getAutoDayType(dateStr);
+    record.manualType = type === autoType ? null : type;
+  }
+  hideTypePopup();
+  renderAll();
+  saveState();
+}
+
+function onOvertimeInput(dateStr, value) {
+  const hours = parseFloat(value) || 0;
+  if (hours < 0) return;
+  if (!state.overtimeRecords[dateStr]) {
+    state.overtimeRecords[dateStr] = { hours: 0, manualType: null };
+  }
+  state.overtimeRecords[dateStr].hours = hours;
+  renderOtSummary();
+  renderSalaryPanel();
+  renderAnnualSummary();
+  saveState();
+}
+
+function onSalaryInput() {
+  const settings = getMonthlySettings();
+  settings.baseSalary = document.getElementById('baseSalary').value;
+  settings.performance = document.getElementById('performance').value;
+  settings.housingFund = document.getElementById('housingFund').value;
+  settings.socialInsurance = document.getElementById('socialInsurance').value;
+
+  // Re-render calendar to update pay displays
+  renderCalendar();
+  renderOtSummary();
+  renderSalaryPanel();
+  renderAnnualSummary();
+  saveState();
+}
+
+function onActualPaidChange() {
+  const settings = getMonthlySettings();
+  settings.actualPaid = document.getElementById('actualPaid').value;
+  renderAnnualSummary();
+  saveState();
+}
+
+function addCustomItem(type) {
+  const settings = getMonthlySettings();
+  const arr = type === 'addition' ? settings.additions : settings.deductions;
+  arr.push({ name: '', amount: '' });
+  renderSalaryPanel();
+  saveState();
+}
+
+function updateCustomItem(type, idx, field, value) {
+  const settings = getMonthlySettings();
+  const arr = type === 'addition' ? settings.additions : settings.deductions;
+  if (idx >= 0 && idx < arr.length) {
+    arr[idx][field] = value;
+    if (field === 'amount') {
+      renderOtSummary();
+      renderAnnualSummary();
+    }
+  }
+  renderSalaryPanel();
+  saveState();
+}
+
+function removeCustomItem(type, idx) {
+  const settings = getMonthlySettings();
+  const arr = type === 'addition' ? settings.additions : settings.deductions;
+  arr.splice(idx, 1);
+  renderSalaryPanel();
+  renderOtSummary();
+  renderAnnualSummary();
+  saveState();
+}
+
+function showIncomeDetail() {
+  const breakdown = calculateMonthlyTotal();
+  const hourlyRate = getHourlyRate();
+
+  let detail = `=== ${state.year}年${state.month}月 收入明细 ===\n\n`;
+  detail += `底薪：${fmtMoney(breakdown.base)}\n`;
+  detail += `时薪：${fmtMoney(hourlyRate)}/小时\n`;
+  detail += `绩效/奖金：${fmtMoney(breakdown.perf)}\n\n`;
+  detail += `加班费合计：${fmtMoney(breakdown.totalOtPay)}\n`;
+
+  const summary = getPeriodOvertimeSummary();
+  detail += `  - 工作日加班 (×1.5)：${fmtMoney(summary.workdayPay)}\n`;
+  detail += `  - 周末加班 (×2.0)：${fmtMoney(summary.weekendPay)}\n`;
+  detail += `  - 节假日加班 (×3.0)：${fmtMoney(summary.holidayPay)}\n`;
+  detail += `  - 加班总小时：${summary.totalHours.toFixed(1)}h\n\n`;
+
+  if (breakdown.additions.length > 0) {
+    detail += `加项：\n`;
+    for (const item of breakdown.additions) {
+      detail += `  + ${item.name || '未命名'}：${fmtMoney(parseFloat(item.amount) || 0)}\n`;
+    }
+    detail += `加项合计：${fmtMoney(breakdown.additionsTotal)}\n\n`;
+  }
+
+  detail += `公积金：${breakdown.hf > 0 ? '-' : ''}${fmtMoney(breakdown.hf)}\n`;
+  detail += `社保：${breakdown.si > 0 ? '-' : ''}${fmtMoney(breakdown.si)}\n`;
+
+  if (breakdown.deductions.length > 0) {
+    detail += `扣项：\n`;
+    for (const item of breakdown.deductions) {
+      detail += `  - ${item.name || '未命名'}：${fmtMoney(parseFloat(item.amount) || 0)}\n`;
+    }
+  }
+  detail += `\n本月应发合计：${fmtMoney(breakdown.total)}\n`;
+
+  const settings = getMonthlySettings();
+  if (settings.actualPaid) {
+    detail += `实际发放：${fmtMoney(parseFloat(settings.actualPaid) || 0)}\n`;
+  }
+
+  alert(detail);
+}
+
+function saveAll() {
+  const settings = getMonthlySettings();
+  settings.baseSalary = document.getElementById('baseSalary').value;
+  settings.performance = document.getElementById('performance').value;
+  settings.housingFund = document.getElementById('housingFund').value;
+  settings.socialInsurance = document.getElementById('socialInsurance').value;
+  settings.actualPaid = document.getElementById('actualPaid').value;
+
+  saveState();
+  renderAnnualSummary();
+  toast('数据已保存');
+}
+
+// ====== INIT ======
+async function ensureHolidays() {
+  // Load holiday data for the current year and adjacent years
+  const yearsToLoad = [state.year, state.year - 1];
+  for (const y of yearsToLoad) {
+    if (!state.holidayYears[y]) {
+      // Check if we already have data for this year in holidays
+      const hasData = Object.keys(state.holidays).some(k => k.startsWith(String(y)));
+      if (!hasData) {
+        await fetchHolidays(y);
+      }
+    }
+  }
+}
+
+async function init() {
+  loadState();
+  document.getElementById('yearDisplay').textContent = state.year;
+  updateApiStatus('loaded', '就绪');
+  await ensureHolidays();
+  renderAll();
+}
+
+init();
+
+// PWA: register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(function(reg) {
+    console.log('SW registered:', reg.scope);
+  }).catch(function(err) {
+    console.warn('SW registration failed:', err);
+  });
+}
+
+// PWA: install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+</script>
+</body>
+</html>

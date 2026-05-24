@@ -1,0 +1,11 @@
+# Generated files (keep the actual icons)
+generate_icons.js
+generate_icons.py
+
+# IDE
+.vscode/
+.claude/
+
+# System
+.DS_Store
+Thumbs.db

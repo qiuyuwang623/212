@@ -395,6 +395,7 @@ body{font-family:var(--font-family);background:var(--bg-page);color:var(--text-p
         <button onclick="changeYear(-1)" title="上一年">&lt;</button>
         <span class="year-display" id="yearDisplay">2026</span>
         <button onclick="changeYear(1)" title="下一年">&gt;</button>
+        <button onclick="showHelp()" title="使用帮助" style="width:32px;height:32px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:#fff;border-radius:50%;cursor:pointer;font-size:14px;font-weight:700">?</button>
       </div>
     </div>
     <div class="header-right">
@@ -814,6 +815,53 @@ function showPageThemePicker() {
   overlay.style.display = 'flex';
 }
 
+function showHelp() {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.innerHTML = `<div class="modal" style="max-width:560px;max-height:80vh;overflow-y:auto">
+    <h3>使用帮助</h3>
+    <div style="font-size:13px;line-height:1.8;color:var(--text-secondary)">
+      <p><strong>📅 加班登记模块</strong><br>
+      日历显示当月工资周期（上月26日～本月25日）。每个日期格中可<strong>直接输入加班小时</strong>（支持0.5步进）。<br>
+      点击日期下方的<strong>类型标签</strong>（工作日/周末/节假日）可弹出菜单手动切换类型，选"恢复自动"取消手动指定。<br>
+      底部<strong>图例和汇总</strong>实时显示各类型加班费合计。</p>
+
+      <p><strong>💰 薪资项目模块</strong><br>
+      填写<strong>底薪</strong>后自动计算时薪（底薪÷21.75÷8）。也可点选<strong>"手动填写"</strong>直接输入时薪。<br>
+      加班费由日历中的加班小时<strong>自动计算</strong>，绩效/公积金/社保手动填写。<br>
+      可添加自定义<strong>加项/扣项</strong>（如餐补、缺勤扣款等），<strong>应发合计</strong>自动汇总。<br>
+      <strong>实际发放工资</strong>需手动填写，用于年度汇总统计。</p>
+
+      <p><strong>📊 年度收入汇总模块</strong><br>
+      展示全年12个月的实际发放/底薪/加班费/应发合计，自动计算<strong>年度总计</strong>。</p>
+
+      <p><strong>🎨 模块配色与主题</strong><br>
+      每个模块标题栏右侧有<strong>6个预设色点</strong>，点击切换模块强调色。<br>
+      点击<strong>⚙齿轮按钮</strong>可分别设置：强调色、背景色、背景透明度（滑块调节，文字不受影响）。<br>
+      点击页面标题栏的<strong>"主题"按钮</strong>可切换全局页面主题（春/夏/秋/冬/暗夜/纯白/森林/暮光），<br>
+      支持<strong>上传照片自动取色</strong>生成自定义主题。</p>
+
+      <p><strong>📁 导入导出</strong><br>
+      点击<strong>"导出"</strong>可选择导出当月数据或全年数据（Excel格式，每月一个Sheet，全年含年度汇总Sheet）。<br>
+      点击<strong>"导入"</strong>选择Excel文件（.xlsx/.xls），程序自动识别日期列和加班小时列，<br>
+      将加班工时导入（不覆盖已有记录）。用户可在Excel中按列填写：日期 | 加班小时。</p>
+
+      <p><strong>🔄 模块拖拽排序</strong><br>
+      桌面端：拖拽模块标题栏左侧的<strong>⋮⋮手柄</strong>可调整模块顺序。<br>
+      移动端：<strong>长按手柄</strong>后拖动，模块跟随手指移动，松开后自动排序。</p>
+
+      <p><strong>📱 移动端适配</strong><br>
+      底部有快捷导航栏，可快速跳转到各模块。/ 月份标签可左右滑动。</p>
+
+      <p><strong>💾 数据存储</strong><br>
+      所有数据保存在<strong>浏览器本地存储</strong>中，不会上传到任何服务器。<br>
+      点击<strong>"保存数据"</strong>可确保当前数据被保存，切换月份前也建议保存。<br>
+      节假日数据首次加载需联网（调用timor.tech API），之后缓存到本地。</p>
+    </div>
+    <div class="modal-actions" style="margin-top:16px"><button class="btn-cancel" onclick="closeModal()">关闭</button></div>
+  </div>`;
+  overlay.style.display = 'flex';
+}
+
 // ============================================================
 //  SECTION: PHOTO COLOR EXTRACTION
 // ============================================================
@@ -1039,7 +1087,73 @@ function applyModuleBackground(moduleId) {
 // ============================================================
 function exportData() {
   if(typeof XLSX==='undefined'){ toast('正在加载Excel组件...'); return; }
+  const overlay = document.getElementById('modalOverlay');
+  overlay.innerHTML = `<div class="modal">
+    <h3>导出Excel数据</h3>
+    <div class="modal-info">请选择导出范围：</div>
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="doExportMonth();closeModal()" style="flex:1;min-height:48px">📅 导出当月（${state.year}年${state.month}月）</button>
+      <button class="btn btn-outline" onclick="doExportYear();closeModal()" style="flex:1;min-height:48px">📊 导出全年（${state.year}年）</button>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal()">取消</button></div>
+  </div>`;
+  overlay.style.display = 'flex';
+}
+
+function doExportMonth() {
   const wb = XLSX.utils.book_new();
+  const m = state.month;
+  const key = monthKey(state.year,m);
+  const ms = state.monthlySettings[key];
+  const {start,end} = getPeriodRange(state.year,m);
+  const hr = getHourlyRateForExport(m);
+  const rows = [['工资计算器', `${state.year}年${m}月`], [], ['工资周期', fmt(start), '~', fmt(end)], []];
+  rows.push(['=== 薪资设置 ===']);
+  if(ms){
+    rows.push(['底薪', ms.baseSalary||'']);
+    if((ms.hourlyRateMode||'auto')==='manual') rows.push(['手动时薪', ms.manualHourlyRate||'']);
+    rows.push(['时薪', hr.toFixed(2)]);
+    rows.push(['绩效/奖金', ms.performance||'']);
+    rows.push(['公积金', ms.housingFund||'']);
+    rows.push(['社保', ms.socialInsurance||'']);
+    if(ms.additions&&ms.additions.length>0){ rows.push(['加项']); for(const it of ms.additions) rows.push(['  '+ (it.name||'未命名'), it.amount||'']); }
+    if(ms.deductions&&ms.deductions.length>0){ rows.push(['扣项']); for(const it of ms.deductions) rows.push(['  '+ (it.name||'未命名'), it.amount||'']); }
+    const bd = calculateMonthlyTotalForMonth(state.year,m);
+    rows.push(['应发合计', bd.total.toFixed(2)]);
+    rows.push(['实际发放', ms.actualPaid||'']);
+  }
+  rows.push([]);
+  rows.push(['=== 加班记录 ===']);
+  rows.push(['日期', '星期', '类型', '加班小时', '加班费']);
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+    const ds = fmt(d);
+    const weekdays = ['','一','二','三','四','五','六','日'];
+    const type = getEffectiveDayType(ds);
+    const rec = state.overtimeRecords[ds];
+    const hours = rec?(parseFloat(rec.hours)||0):0;
+    const pay = hours>0&&hr>0?hr*hours*(MULTIPLIERS[type]||0):0;
+    rows.push([ds, '周'+weekdays[getDayOfWeek(d)], getTypeLabel(type), hours||'', pay>0?pay.toFixed(2):'']);
+  }
+  const summary = getPeriodOvertimeSummaryForMonth(m,hr);
+  rows.push([]);
+  rows.push(['加班总小时', summary.totalHours.toFixed(1)]);
+  rows.push(['工作日加班费', summary.workdayPay.toFixed(2)]);
+  rows.push(['周末加班费', summary.weekendPay.toFixed(2)]);
+  rows.push(['节假日加班费', summary.holidayPay.toFixed(2)]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:16},{wch:8},{wch:10},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, m+'月');
+  const fname = `salary-${state.year}-${String(m).padStart(2,'0')}月.xlsx`;
+  XLSX.writeFile(wb, fname);
+  toast('当月数据已导出');
+}
+
+function doExportYear() {
+  const wb = XLSX.utils.book_new();
+  let annualRows = [[`${state.year}年 年度收入汇总`], [], ['月份', '实际发放', '底薪', '加班费', '应发合计']];
+  let annualTotal = 0;
+
   for(let m=1;m<=12;m++){
     const key = monthKey(state.year,m);
     const ms = state.monthlySettings[key];
@@ -1059,6 +1173,10 @@ function exportData() {
       const bd = calculateMonthlyTotalForMonth(state.year,m);
       rows.push(['应发合计', bd.total.toFixed(2)]);
       rows.push(['实际发放', ms.actualPaid||'']);
+      annualRows.push([m+'月', ms.actualPaid||'', bd.base.toFixed(2), bd.totalOtPay.toFixed(2), bd.total.toFixed(2)]);
+      annualTotal += parseFloat(ms.actualPaid)||0;
+    } else {
+      annualRows.push([m+'月', '—', '—', '—', '—']);
     }
     rows.push([]);
     rows.push(['=== 加班记录 ===']);
@@ -1083,10 +1201,19 @@ function exportData() {
     ws['!cols'] = [{wch:16},{wch:8},{wch:10},{wch:10},{wch:12}];
     XLSX.utils.book_append_sheet(wb, ws, m+'月');
   }
+
+  annualRows.push([]);
+  annualRows.push(['年度总计', fmtMoney(annualTotal), '', '', '']);
+  const wsAnnual = XLSX.utils.aoa_to_sheet(annualRows);
+  wsAnnual['!cols'] = [{wch:10},{wch:14},{wch:12},{wch:12},{wch:14}];
+  // Insert annual summary as first sheet
+  wb.SheetNames.unshift('年度汇总');
+  wb.Sheets['年度汇总'] = wsAnnual;
+
   const now = new Date();
-  const fname = `salary-${state.year}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.xlsx`;
+  const fname = `salary-${state.year}-全年-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.xlsx`;
   XLSX.writeFile(wb, fname);
-  toast('Excel已导出');
+  toast('全年数据已导出');
 }
 
 function getHourlyRateForExport(month) {

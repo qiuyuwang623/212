@@ -118,5 +118,8 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`小说爬虫已启动: http://localhost:${PORT}`);
-  console.log('在浏览器中打开上述地址即可使用');
+  const { exec } = require('child_process');
+  const cmd = process.platform === 'win32' ? `start http://localhost:${PORT}` : `open http://localhost:${PORT}`;
+  exec(cmd);
+  console.log('浏览器已打开，此窗口保持运行即可');
 });

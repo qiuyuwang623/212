@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小说爬虫</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);color:#e0e0e0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:40px 20px}
+.app{width:100%;max-width:680px}
+.titlebar{display:flex;align-items:center;gap:10px;margin-bottom:4px;padding:0 4px}
+.titlebar .dot{width:12px;height:12px;border-radius:50%}
+.titlebar .dot.r{background:#ff5f57}
+.titlebar .dot.y{background:#febc2e}
+.titlebar .dot.g{background:#28c840}
+.titlebar .title{font-size:13px;color:#999;margin-left:8px}
+.window{background:#1e1e2e;border-radius:10px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+h2{font-size:20px;font-weight:600;margin-bottom:20px;color:#fff}
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #333}
+.tab{padding:8px 20px;cursor:pointer;font-size:14px;color:#888;border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:#ccc}
+.tab.active{color:#fff;border-bottom-color:#4a9eff}
+.panel{display:none}
+.panel.active{display:block}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;color:#aaa;margin-bottom:6px}
+.form-group input,.form-group textarea{width:100%;padding:10px 14px;background:#2a2a3e;border:1px solid #3a3a4e;border-radius:8px;color:#e0e0e0;font-size:14px;transition:border-color .2s}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:#4a9eff}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;transition:all .2s}
+.btn-primary{background:#4a9eff;color:#fff}
+.btn-primary:hover{background:#3a8eef}
+.btn-primary:disabled{background:#3a3a4e;color:#666;cursor:not-allowed}
+.btn-outline{background:transparent;border:1px solid #4a9eff;color:#4a9eff}
+.btn-outline:hover{background:rgba(74,158,255,.1)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-row{display:flex;gap:10px;margin-top:8px}
+.section-label{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px}
+.progress-area{margin-top:20px;display:none}
+.progress-area.visible{display:block}
+.progress-bar{width:100%;height:6px;background:#2a2a3e;border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#4a9eff,#00d4aa);border-radius:3px;transition:width .3s;width:0%}
+.progress-text{font-size:13px;color:#aaa;margin-bottom:12px;display:flex;justify-content:space-between}
+.log-area{background:#151520;border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;font-size:12px;font-family:"Cascadia Code","Fira Code",monospace;line-height:1.6;display:none}
+.log-area.visible{display:block}
+.log-line{color:#999}
+.log-line.ok{color:#28c840}
+.log-line.err{color:#ff5f57}
+.log-line.info{color:#4a9eff}
+.folder-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.folder-path{flex:1;font-size:13px;color:#aaa;background:#2a2a3e;padding:8px 12px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-top:20px;border-top:1px solid #333;font-size:12px;color:#666}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2a2a2e}
+.setting-row label{font-size:14px;color:#ccc}
+.setting-row input{width:80px;padding:6px 10px;background:#2a2a3e;border:1px solid #3a3a4e;border-radius:6px;color:#e0e0e0;text-align:center;font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">小说爬虫 v1.0</span></div>
+  <div class="window">
+    <h2>小说爬虫</h2>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="batch">批量下载</div>
+      <div class="tab" data-tab="single">单章下载</div>
+      <div class="tab" data-tab="settings">设置</div>
+    </div>
+
+    <!-- 批量 -->
+    <div class="panel active" id="panel-batch">
+      <div class="form-group">
+        <label>目录页 URL</label>
+        <input type="url" id="batchUrl" placeholder="https://xxx.com/book/123/">
+      </div>
+      <div class="form-group">
+        <label>书名（可选，留空自动提取）</label>
+        <input type="text" id="bookName" placeholder="自动从页面标题提取">
+      </div>
+      <div class="folder-row">
+        <span style="font-size:13px;color:#aaa;white-space:nowrap;">保存到：</span>
+        <span class="folder-path" id="folderPath">未选择</span>
+        <button class="btn btn-outline btn-sm" onclick="pickFolder()">选择文件夹</button>
+      </div>
+      <button class="btn btn-primary" id="btnBatch" onclick="startBatch()">开始抓取</button>
+      <button class="btn btn-outline btn-sm" style="margin-left:8px;" onclick="stopScraping()" id="btnStop" disabled>停止</button>
+    </div>
+
+    <!-- 单章 -->
+    <div class="panel" id="panel-single">
+      <div class="form-group">
+        <label>章节 URL</label>
+        <input type="url" id="singleUrl" placeholder="https://xxx.com/chapter/456.html">
+      </div>
+      <button class="btn btn-primary" id="btnSingle" onclick="startSingle()">下载单章</button>
+    </div>
+
+    <!-- 设置 -->
+    <div class="panel" id="panel-settings">
+      <div class="setting-row">
+        <label>请求间隔（毫秒）</label>
+        <input type="number" id="delayMs" value="1500" min="500" max="10000" step="500">
+      </div>
+      <div class="setting-row">
+        <label>超时时间（秒）</label>
+        <input type="number" id="timeoutSec" value="30" min="5" max="120">
+      </div>
+    </div>
+
+    <!-- 进度 -->
+    <div class="progress-area" id="progressArea">
+      <div class="section-label">抓取进度</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text"><span id="progressLabel">就绪</span><span id="progressPercent">0%</span></div>
+      <div class="log-area" id="logArea"></div>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusText">就绪</span>
+      <span>仅用于公开免费内容</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== State ======
+let dirHandle = null;
+let shouldStop = false;
+
+// ====== Tabs ======
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ====== Folder Picker ======
+async function pickFolder() {
+  try {
+    dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    document.getElementById('folderPath').textContent = dirHandle.name;
+    log('已选择文件夹: ' + dirHandle.name, 'info');
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      log('选择文件夹失败: ' + e.message, 'err');
+    }
+  }
+}
+
+// ====== Helpers ======
+function cleanText(html) {
+  return html
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/<br\s*\/?>/gi, '\n').replace(/<p[^>]*>/gi, '\n').replace(/<\/p>/gi, '')
+    .replace(/<[^>]+>/g, '').replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function safeFilename(name) {
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || '未命名';
+}
+
+function log(msg, type) {
+  const area = document.getElementById('logArea');
+  area.classList.add('visible');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (type || '');
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+}
+
+function setProgress(percent, label) {
+  document.getElementById('progressFill').style.width = percent + '%';
+  document.getElementById('progressPercent').textContent = Math.round(percent) + '%';
+  document.getElementById('progressLabel').textContent = label;
+  document.getElementById('statusText').textContent = label;
+}
+
+function setStatus(text) {
+  document.getElementById('statusText').textContent = text;
+}
+
+// ====== Core scraping ======
+async function fetchPage(url) {
+  const timeoutSec = parseInt(document.getElementById('timeoutSec').value) || 30;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutSec * 1000);
+
+  try {
+    const resp = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    let html;
+    try {
+      const buffer = await resp.arrayBuffer();
+      html = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    } catch {
+      const buffer = await resp.arrayBuffer();
+      try {
+        html = new TextDecoder('gbk').decode(buffer);
+      } catch {
+        html = new TextDecoder('gb2312').decode(buffer);
+      }
+    }
+    return html;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extractChapter(url, html) {
+  // Title
+  let title = '';
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1Match) {
+    title = cleanText(h1Match[1]);
+  } else {
+    const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
+    if (titleMatch) {
+      title = cleanText(titleMatch[1]).split(/[-_|]/)[0].trim();
+    }
+  }
+
+  // Content
+  let content = '';
+  const patterns = [
+    /<div[^>]*id\s*=\s*["']content["'][^>]*>([\s\S]*?)<\/div>/i,
+    /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
+    /<div[^>]*id\s*=\s*["']chaptercontent["'][^>]*>([\s\S]*?)<\/div>/i,
+    /<article[^>]*>([\s\S]*?)<\/article>/i,
+    /<div[^>]*id\s*=\s*["']txt["'][^>]*>([\s\S]*?)<\/div>/i,
+  ];
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m) { content = m[1]; break; }
+  }
+  if (!content) {
+    const bodyMatch = html.match(/<body[\s\S]*?>([\s\S]*?)<\/body>/i);
+    if (bodyMatch) {
+      content = bodyMatch[1]
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+        .replace(/<header[\s\S]*?<\/header>/gi, '')
+        .replace(/<footer[\s\S]*?<\/footer>/gi, '');
+    }
+  }
+  content = cleanText(content);
+  return { title, content };
+}
+
+function extractChapterList(html, baseUrl) {
+  const linkPattern = /<a[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const chapters = [];
+  let match;
+  while ((match = linkPattern.exec(html)) !== null) {
+    let href = match[1];
+    const text = cleanText(match[2]);
+    if (text.length < 2) continue;
+    if (/首页|下一页|上一页|目录|返回|登录|注册|搜索|排行|下载|书架/.test(text)) continue;
+
+    if (href.startsWith('/')) {
+      href = new URL(baseUrl).origin + href;
+    } else if (!href.startsWith('http')) {
+      href = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1) + href;
+    }
+    chapters.push({ title: text, url: href });
+  }
+  // Dedup
+  const seen = new Set();
+  return chapters.filter(ch => {
+    if (seen.has(ch.url)) return false;
+    seen.add(ch.url);
+    return true;
+  });
+}
+
+async function writeTextFile(dirHandle, filename, content) {
+  const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+async function writeTextFileFallback(filename, content) {
+  // Fallback: trigger download (when no dirHandle selected)
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ====== Main flows ======
+async function startSingle() {
+  const url = document.getElementById('singleUrl').value.trim();
+  if (!url) { log('请输入章节URL', 'err'); return; }
+
+  document.getElementById('btnSingle').disabled = true;
+  document.getElementById('progressArea').classList.add('visible');
+  log('开始下载单章...', 'info');
+  setStatus('下载中...');
+
+  try {
+    const html = await fetchPage(url);
+    const ch = extractChapter(url, html);
+
+    if (!ch.content) {
+      log('未能提取正文，请检查URL', 'err');
+      setStatus('失败');
+      return;
+    }
+
+    const filename = safeFilename(ch.title) + '.txt';
+    const fileContent = `${ch.title}\n${'='.repeat(40)}\n来源: ${url}\n\n${ch.content}`;
+
+    if (dirHandle) {
+      await writeTextFile(dirHandle, filename, fileContent);
+    } else {
+      await writeTextFileFallback(filename, fileContent);
+    }
+
+    log(`已保存: ${filename} (${ch.content.length}字)`, 'ok');
+    setStatus('完成');
+  } catch(e) {
+    log('下载失败: ' + e.message, 'err');
+    setStatus('错误');
+  } finally {
+    document.getElementById('btnSingle').disabled = false;
+  }
+}
+
+async function startBatch() {
+  const url = document.getElementById('batchUrl').value.trim();
+  if (!url) { log('请输入目录页URL', 'err'); return; }
+  if (!dirHandle) { log('请先选择保存文件夹', 'err'); return; }
+
+  shouldStop = false;
+  document.getElementById('btnBatch').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('progressArea').classList.add('visible');
+
+  log('正在读取目录页...', 'info');
+  setStatus('读取目录中...');
+  setProgress(0, '读取目录中...');
+
+  try {
+    const html = await fetchPage(url);
+    const chapters = extractChapterList(html, url);
+
+    if (chapters.length === 0) {
+      log('未找到章节链接', 'err');
+      setStatus('失败');
+      return;
+    }
+
+    let bookName = document.getElementById('bookName').value.trim();
+    if (!bookName) {
+      const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
+      bookName = titleMatch ? cleanText(titleMatch[1]).split(/[-_|]/)[0].trim() : '未命名';
+    }
+
+    // Create subdirectory
+    let bookDirHandle;
+    try {
+      bookDirHandle = await dirHandle.getDirectoryHandle(safeFilename(bookName), { create: true });
+    } catch {
+      bookDirHandle = dirHandle;
+    }
+
+    log(`找到 ${chapters.length} 个章节，保存到: ${safeFilename(bookName)}/`, 'info');
+
+    let success = 0;
+    let fail = 0;
+    const delayMs = parseInt(document.getElementById('delayMs').value) || 1500;
+
+    for (let i = 0; i < chapters.length; i++) {
+      if (shouldStop) {
+        log('用户停止', 'info');
+        setStatus('已停止');
+        break;
+      }
+
+      const ch = chapters[i];
+      const idx = String(i + 1).padStart(4, '0');
+      const filename = `${idx}_${safeFilename(ch.title)}.txt`;
+      const pct = (i / chapters.length) * 100;
+
+      setProgress(pct, `${i + 1}/${chapters.length} ${ch.title}`);
+
+      try {
+        if (i > 0) await sleep(delayMs);
+
+        const pageHtml = await fetchPage(ch.url);
+        const chapter = extractChapter(ch.url, pageHtml);
+
+        if (!chapter.content) {
+          log(`${filename}: 未提取到正文`, 'err');
+          fail++;
+          continue;
+        }
+
+        const fileContent = `${chapter.title}\n${'='.repeat(40)}\n来源: ${ch.url}\n\n${chapter.content}`;
+        await writeTextFile(bookDirHandle, filename, fileContent);
+
+        log(`${filename} OK (${chapter.content.length}字)`, 'ok');
+        success++;
+      } catch(e) {
+        log(`${filename}: ${e.message}`, 'err');
+        fail++;
+      }
+    }
+
+    setProgress(100, `完成: ${success} 成功, ${fail} 失败`);
+    log(`\n总计: ${success} 成功, ${fail} 失败`, success === chapters.length ? 'ok' : 'info');
+    setStatus(success === chapters.length ? '全部完成' : `完成 (${success}/${chapters.length})`);
+  } catch(e) {
+    log('抓取失败: ' + e.message, 'err');
+    setStatus('错误');
+  } finally {
+    document.getElementById('btnBatch').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+  }
+}
+
+function stopScraping() {
+  shouldStop = true;
+  log('正在停止...', 'info');
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ====== Init ======
+setStatus('就绪 - 请先选择保存文件夹');
+</script>
+</body>
+</html>

@@ -1388,7 +1388,7 @@ function renderModules() {
 
   // Calendar body
   const calBody = document.getElementById('body-calendar');
-  if(calBody) calBody.innerHTML = `<div class="calendar-header"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="calendar-grid" id="calendarGrid"></div><div class="ot-summary" id="otSummary"></div><div class="legend"><span style="font-weight:500">图例：</span><span class="legend-item"><span class="legend-dot workday"></span> 工作日×1.5</span><span class="legend-item"><span class="legend-dot weekend"></span> 周末×2.0</span><span class="legend-item"><span class="legend-dot holiday"></span> 节假日×3.0</span><span style="color:var(--text-muted)">| 点击日期标签可弹出菜单自由切换类型</span></div>`;
+  if(calBody) calBody.innerHTML = `<div class="calendar-header"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="calendar-grid" id="calendarGrid"></div><div class="ot-summary" id="otSummary"><div class="ot-summary-item"><div class="label">加班总小时</div><div class="value" id="otTotalHours">0.0h</div></div><div class="ot-summary-item"><div class="label">工作日加班 (×1.5)</div><div class="value" id="otWorkdayPay">¥0.00</div></div><div class="ot-summary-item"><div class="label">周末加班 (×2.0)</div><div class="value" id="otWeekendPay">¥0.00</div></div><div class="ot-summary-item"><div class="label">节假日加班 (×3.0)</div><div class="value" id="otHolidayPay">¥0.00</div></div></div><div class="legend"><span style="font-weight:500">图例：</span><span class="legend-item"><span class="legend-dot workday"></span> 工作日×1.5</span><span class="legend-item"><span class="legend-dot weekend"></span> 周末×2.0</span><span class="legend-item"><span class="legend-dot holiday"></span> 节假日×3.0</span><span style="color:var(--text-muted)">| 点击日期标签可弹出菜单自由切换类型</span></div>`;
 
   // Salary body
   const salBody = document.getElementById('body-salary');
@@ -1421,12 +1421,12 @@ function initDragAndDrop() {
     card.addEventListener('dragleave', handleDragLeave);
     card.addEventListener('drop', handleDrop);
 
-    // Touch support via drag handle
-    const handle = card.querySelector('.drag-handle');
-    if(handle){
-      handle.addEventListener('touchstart', handleTouchStart, {passive:false});
-      handle.addEventListener('touchmove', handleTouchMove, {passive:false});
-      handle.addEventListener('touchend', handleTouchEnd);
+    // Touch support via module card header
+    const header = card.querySelector('.module-card-header');
+    if(header){
+      header.addEventListener('touchstart', handleTouchStart, {passive:false});
+      header.addEventListener('touchmove', handleTouchMove, {passive:false});
+      header.addEventListener('touchend', handleTouchEnd);
     }
   });
 
@@ -1472,6 +1472,8 @@ function handleDrop(e) {
 let touchClone = null, touchStartY, touchStartX, touchModuleId;
 
 function handleTouchStart(e) {
+  // Skip if touching interactive elements
+  if(e.target.closest('.theme-dot') || e.target.closest('button') || e.target.closest('input')) return;
   touchModuleId = e.target.closest('.module-card').getAttribute('data-module');
   const card = document.getElementById('module-'+touchModuleId);
   touchStartX = e.touches[0].clientX;
@@ -1639,9 +1641,14 @@ function renderCalendar() {
 
 function renderOtSummary() {
   const {totalHours,workdayPay,weekendPay,holidayPay} = getPeriodOvertimeSummary();
-  const container = document.getElementById('otSummary');
-  if(!container) return;
-  container.innerHTML = `<div class="ot-summary-item"><div class="label">加班总小时</div><div class="value">${totalHours.toFixed(1)}h</div></div><div class="ot-summary-item"><div class="label">工作日加班 (×1.5)</div><div class="value">${fmtMoney(workdayPay)}</div></div><div class="ot-summary-item"><div class="label">周末加班 (×2.0)</div><div class="value">${fmtMoney(weekendPay)}</div></div><div class="ot-summary-item"><div class="label">节假日加班 (×3.0)</div><div class="value">${fmtMoney(holidayPay)}</div></div>`;
+  const elHours = document.getElementById('otTotalHours');
+  const elWorkday = document.getElementById('otWorkdayPay');
+  const elWeekend = document.getElementById('otWeekendPay');
+  const elHoliday = document.getElementById('otHolidayPay');
+  if(elHours) elHours.textContent = totalHours.toFixed(1)+'h';
+  if(elWorkday) elWorkday.textContent = fmtMoney(workdayPay);
+  if(elWeekend) elWeekend.textContent = fmtMoney(weekendPay);
+  if(elHoliday) elHoliday.textContent = fmtMoney(holidayPay);
 }
 
 function renderSalaryPanel() {
@@ -1817,14 +1824,15 @@ function setDayType(dateStr, type) {
   saveState();
 }
 
+let otInputTimer = null;
 function onOvertimeInput(dateStr, value) {
   const hours = parseFloat(value)||0;
   if(hours<0) return;
   if(!state.overtimeRecords[dateStr]) state.overtimeRecords[dateStr] = {hours:0,manualType:null};
   state.overtimeRecords[dateStr].hours = hours;
   updateTotalsDisplay();
-  renderAnnualSummary();
-  saveState();
+  clearTimeout(otInputTimer);
+  otInputTimer = setTimeout(() => { renderAnnualSummary(); saveState(); }, 300);
 }
 
 function onSalaryInput() {

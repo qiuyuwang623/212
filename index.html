@@ -674,6 +674,18 @@ function renderSalaryPanel() {
   document.getElementById('socialInsurance').value = settings.socialInsurance;
   document.getElementById('actualPaid').value = settings.actualPaid;
 
+  updateTotalsDisplay();
+
+  // Render dynamic items (only when needed: init, add, remove)
+  renderDynamicItems('otherAdditions', settings.additions, 'addition');
+  renderDynamicItems('otherDeductions', settings.deductions, 'deduction');
+}
+
+function updateTotalsDisplay() {
+  const hourlyRate = getHourlyRate();
+  const { totalOtPay } = getPeriodOvertimeSummary();
+  const breakdown = calculateMonthlyTotal();
+
   document.getElementById('hourlyRate').textContent = hourlyRate > 0
     ? `时薪：${fmtMoney(hourlyRate)}/小时（底薪÷21.75÷8）`
     : '时薪：¥0.00/小时（请输入底薪）';
@@ -691,9 +703,7 @@ function renderSalaryPanel() {
   if (breakdown.deductionsTotal) parts.push(`扣项 -${fmtMoney(breakdown.deductionsTotal)}`);
   document.getElementById('totalDetail').textContent = parts.join(' | ') || '—';
 
-  // Render dynamic items
-  renderDynamicItems('otherAdditions', settings.additions, 'addition');
-  renderDynamicItems('otherDeductions', settings.deductions, 'deduction');
+  renderOtSummary();
 }
 
 function renderDynamicItems(containerId, items, type) {
@@ -881,8 +891,7 @@ function onOvertimeInput(dateStr, value) {
     state.overtimeRecords[dateStr] = { hours: 0, manualType: null };
   }
   state.overtimeRecords[dateStr].hours = hours;
-  renderOtSummary();
-  renderSalaryPanel();
+  updateTotalsDisplay();
   renderAnnualSummary();
   saveState();
 }
@@ -894,10 +903,9 @@ function onSalaryInput() {
   settings.housingFund = document.getElementById('housingFund').value;
   settings.socialInsurance = document.getElementById('socialInsurance').value;
 
-  // Re-render calendar to update pay displays
+  // Re-render calendar to update pay displays, update totals without rebuilding inputs
   renderCalendar();
-  renderOtSummary();
-  renderSalaryPanel();
+  updateTotalsDisplay();
   renderAnnualSummary();
   saveState();
 }
@@ -923,11 +931,11 @@ function updateCustomItem(type, idx, field, value) {
   if (idx >= 0 && idx < arr.length) {
     arr[idx][field] = value;
     if (field === 'amount') {
-      renderOtSummary();
+      updateTotalsDisplay();
       renderAnnualSummary();
     }
   }
-  renderSalaryPanel();
+  // Save state but do NOT re-render the form (avoids focus loss)
   saveState();
 }
 

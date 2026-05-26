@@ -324,14 +324,12 @@ body{font-family:var(--font-family);background:var(--bg-page);color:var(--text-p
 /* ====== ANNUAL TABLE ====== */
 .annual-table{width:100%;border-collapse:collapse;font-size:var(--font-size-sm)}
 .annual-table th{background:var(--bg-card-alt);padding:10px 8px;text-align:center;border-bottom:2px solid #dee2e6;font-weight:600}
-.annual-table td{padding:8px;text-align:center;border-bottom:1px solid var(--border-light);transition:background var(--transition-fast),transform var(--transition-fast)}
-.annual-table tbody tr{cursor:pointer;transition:transform var(--transition-fast),box-shadow var(--transition-fast)}
-.annual-table tbody tr:hover{transform:scale(1.01);box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.annual-table td{padding:8px;text-align:center;border-bottom:1px solid var(--border-light);transition:background var(--transition-fast)}
+.annual-table tbody tr{cursor:pointer;transition:background var(--transition-fast)}
 .annual-table tbody tr:hover td{background:var(--module-accent-light)}
-.annual-table tbody tr:active{transform:scale(0.99)}
+.annual-table tbody tr:active td{background:var(--module-accent-light);opacity:0.8}
 .annual-table .total-row td{font-weight:700;border-top:2px solid var(--module-accent);background:var(--module-accent-light);font-size:var(--font-size-lg)}
 .annual-table .total-row{cursor:default}
-.annual-table .total-row:hover{transform:none;box-shadow:none}
 .annual-table .total-row:hover td{background:var(--module-accent-light)}
 .annual-table .highlight{color:var(--module-accent);font-weight:600}
 
@@ -1886,6 +1884,7 @@ function selectMonth(month) {
   renderAllContent();
   renderMonthTabs();
   saveState();
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 let popupTargetDate = null;

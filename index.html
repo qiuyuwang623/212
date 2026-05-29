@@ -768,16 +768,21 @@ function calculateMonthlyTotal() {
 }
 
 function calculateAnnualTotal() {
-  let total=0;
+  let total=0, totalOt=0, totalPerf=0, totalYingfa=0;
   const months=[];
   for(let m=1;m<=12;m++){
     const key=monthKey(state.year,m);
     const s=state.monthlySettings[key];
     const ap=s?(parseFloat(s.actualPaid)||0):0;
-    total+=ap;
-    months.push({month:m,key,actualPaid:ap,settings:s||null});
+    const perf=s?(parseFloat(s.performance)||0):0;
+    const bd=s?calculateMonthlyTotalForMonth(state.year,m):{total:0,totalOtPay:0};
+    total+=(ap+perf);
+    totalOt+=bd.totalOtPay;
+    totalPerf+=perf;
+    totalYingfa+=bd.total;
+    months.push({month:m,key,actualPaid:ap,perf,settings:s||null,totalOtPay:bd.totalOtPay,total:bd.total});
   }
-  return {total,months};
+  return {total,totalOt,totalPerf,totalYingfa,months};
 }
 
 function calculateMonthlyTotalForMonth(year,month){
@@ -1001,7 +1006,7 @@ function showHelp() {
       <strong>实际发放工资</strong>需手动填写，用于年度汇总统计。</p>
 
       <p><strong>📊 年度收入汇总模块</strong><br>
-      展示全年12个月的实际发放/底薪/加班费/应发合计，自动计算<strong>年度总计</strong>。</p>
+      展示全年12个月的实发合计/底薪/绩效/加班费/应发合计，自动计算<strong>年度总计</strong>。</p>
 
       <p><strong>🎨 模块配色与主题</strong><br>
       每个模块标题栏右侧有<strong>6个预设色点</strong>，点击切换模块强调色。<br>
@@ -1294,7 +1299,10 @@ function doExportMonth() {
     if(ms.deductions&&ms.deductions.length>0){ rows.push(['扣项']); for(const it of ms.deductions) rows.push(['  '+ (it.name||'未命名'), it.amount||'']); }
     const bd = calculateMonthlyTotalForMonth(state.year,m);
     rows.push(['应发合计', bd.total.toFixed(2)]);
-    rows.push(['实际发放', ms.actualPaid||'']);
+    if(bd.tax) rows.push(['个税（估算）', bd.tax.toFixed(2)]);
+    rows.push(['实际发放薪资', ms.actualPaid||'']);
+    rows.push(['绩效/奖金', ms.performance||'']);
+    rows.push(['实际发放合计', ((parseFloat(ms.actualPaid)||0)+(parseFloat(ms.performance)||0)).toFixed(2)]);
   }
   rows.push([]);
   rows.push(['=== 加班记录 ===']);
@@ -1325,8 +1333,8 @@ function doExportMonth() {
 
 function doExportYear() {
   const wb = XLSX.utils.book_new();
-  let annualRows = [[`${state.year}年 年度收入汇总`], [], ['月份', '实际发放', '底薪', '加班费', '应发合计']];
-  let annualTotal = 0;
+  let annualRows = [[`${state.year}年 年度收入汇总`], [], ['月份', '实发合计', '底薪', '绩效', '加班费', '应发合计']];
+  let annualTotal = 0, annualOtTotal = 0, annualPerfTotal = 0, annualYingfaTotal = 0;
 
   for(let m=1;m<=12;m++){
     const key = monthKey(state.year,m);
@@ -1348,9 +1356,16 @@ function doExportYear() {
       if(ms.deductions&&ms.deductions.length>0){ rows.push(['扣项']); for(const it of ms.deductions) rows.push(['  '+ (it.name||'未命名'), it.amount||'']); }
       const bd = calculateMonthlyTotalForMonth(state.year,m);
       rows.push(['应发合计', bd.total.toFixed(2)]);
-      rows.push(['实际发放', ms.actualPaid||'']);
-      annualRows.push([m+'月', ms.actualPaid||'', bd.base.toFixed(2), bd.totalOtPay.toFixed(2), bd.total.toFixed(2)]);
-      annualTotal += parseFloat(ms.actualPaid)||0;
+      if(bd.tax) rows.push(['个税（估算）', bd.tax.toFixed(2)]);
+      rows.push(['实际发放薪资', ms.actualPaid||'']);
+      rows.push(['绩效/奖金', ms.performance||'']);
+      rows.push(['实际发放合计', ((parseFloat(ms.actualPaid)||0)+(parseFloat(ms.performance)||0)).toFixed(2)]);
+      const rowActual = (parseFloat(ms.actualPaid)||0)+(parseFloat(ms.performance)||0);
+      annualRows.push([m+'月', rowActual>0?rowActual.toFixed(2):'', bd.base.toFixed(2), (parseFloat(ms.performance)||0).toFixed(2), bd.totalOtPay.toFixed(2), bd.total.toFixed(2)]);
+      annualTotal += rowActual;
+      annualOtTotal += bd.totalOtPay;
+      annualPerfTotal += (parseFloat(ms.performance)||0);
+      annualYingfaTotal += bd.total;
     } else {
       annualRows.push([m+'月', '—', '—', '—', '—']);
     }
@@ -1379,7 +1394,7 @@ function doExportYear() {
   }
 
   annualRows.push([]);
-  annualRows.push(['年度总计', fmtMoney(annualTotal), '', '', '']);
+  annualRows.push(['年度总计', fmtMoney(annualTotal), '', fmtMoney(annualPerfTotal), fmtMoney(annualOtTotal), fmtMoney(annualYingfaTotal)]);
   const wsAnnual = XLSX.utils.aoa_to_sheet(annualRows);
   wsAnnual['!cols'] = [{wch:10},{wch:14},{wch:12},{wch:12},{wch:14}];
   // Insert annual summary as first sheet
@@ -1930,16 +1945,17 @@ function renderDynamicItems(containerId, items, type) {
 }
 
 function renderAnnualSummary() {
-  const {total,months} = calculateAnnualTotal();
+  const {total,totalOt,totalPerf,totalYingfa,months} = calculateAnnualTotal();
   const titleEl = document.getElementById('annualTitle');
   if(titleEl) titleEl.textContent = ` ${state.year}年 年度收入汇总`;
 
-  let html = `<thead><tr><th>月份</th><th>实际发放</th><th>底薪</th><th>加班费</th><th>应发合计</th></tr></thead><tbody>`;
+  let html = `<thead><tr><th>月份</th><th>实发合计</th><th>底薪</th><th>绩效</th><th>加班费</th><th>应发合计</th></tr></thead><tbody>`;
   for(const m of months){
     const bd = m.settings?calculateMonthlyTotalForMonth(state.year,m.month):{total:0,base:0,totalOtPay:0};
-    html += `<tr onclick="selectMonth(${m.month})" title="跳转到${m.month}月"><td><strong style="color:var(--module-accent);text-decoration:underline">${m.month}月</strong></td><td class="highlight">${m.actualPaid>0?fmtMoney(m.actualPaid):'—'}</td><td>${bd.base>0?fmtMoney(bd.base):'—'}</td><td>${bd.totalOtPay>0?fmtMoney(bd.totalOtPay):'—'}</td><td>${bd.total!==0?fmtMoney(bd.total):'—'}</td></tr>`;
+    const rowTotal = m.actualPaid + m.perf;
+    html += `<tr onclick="selectMonth(${m.month})" title="跳转到${m.month}月"><td><strong style="color:var(--module-accent);text-decoration:underline">${m.month}月</strong></td><td class="highlight">${rowTotal>0?fmtMoney(rowTotal):'—'}</td><td>${bd.base>0?fmtMoney(bd.base):'—'}</td><td>${m.perf>0?fmtMoney(m.perf):'—'}</td><td>${bd.totalOtPay>0?fmtMoney(bd.totalOtPay):'—'}</td><td>${bd.total!==0?fmtMoney(bd.total):'—'}</td></tr>`;
   }
-  html += `<tr class="total-row"><td>年度总计</td><td class="highlight">${fmtMoney(total)}</td><td></td><td></td><td></td></tr></tbody>`;
+  html += `<tr class="total-row"><td>年度总计</td><td class="highlight">${fmtMoney(total)}</td><td></td><td>${totalPerf>0?fmtMoney(totalPerf):''}</td><td>${totalOt>0?fmtMoney(totalOt):''}</td><td>${totalYingfa!==0?fmtMoney(totalYingfa):''}</td></tr></tbody>`;
 
   const table = document.getElementById('annualTable');
   if(table) table.innerHTML = html;

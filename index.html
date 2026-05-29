@@ -700,6 +700,27 @@ function getHourlyRate() {
   return base<=0?0:base/HOURLY_DAYS/WORK_HOURS;
 }
 
+// 简化版个税计算（仅作参考）
+const TAX_BRACKETS = [
+  { max: 3000, rate: 0.03, deduction: 0 },
+  { max: 12000, rate: 0.10, deduction: 210 },
+  { max: 25000, rate: 0.20, deduction: 1410 },
+  { max: 35000, rate: 0.25, deduction: 2660 },
+  { max: 55000, rate: 0.30, deduction: 4410 },
+  { max: 80000, rate: 0.35, deduction: 7160 },
+  { max: Infinity, rate: 0.45, deduction: 15160 },
+];
+
+function calculateTax(taxableIncome) {
+  if (taxableIncome <= 0) return 0;
+  for (const bracket of TAX_BRACKETS) {
+    if (taxableIncome <= bracket.max) {
+      return Math.max(0, taxableIncome * bracket.rate - bracket.deduction);
+    }
+  }
+  return 0;
+}
+
 function getOvertimePayForDate(dateStr, hourlyRate) {
   const r = state.overtimeRecords[dateStr];
   const hours = r?(parseFloat(r.hours)||0):0;
@@ -741,7 +762,9 @@ function calculateMonthlyTotal() {
   const {totalOtPay}=getPeriodOvertimeSummary();
   let adds=0; for(const it of s.additions) adds+=parseFloat(it.amount)||0;
   let deds=0; for(const it of s.deductions) deds+=parseFloat(it.amount)||0;
-  return {base,perf,hf,si,totalOtPay,additionsTotal:adds,deductionsTotal:deds,total:base+perf+totalOtPay+adds-hf-si-deds,additions:s.additions,deductions:s.deductions};
+  const preTaxTotal = base + perf + totalOtPay + adds - hf - si - deds;
+  const tax = calculateTax(preTaxTotal - 5000);
+  return {base,perf,hf,si,totalOtPay,additionsTotal:adds,deductionsTotal:deds,tax,total:preTaxTotal-tax,additions:s.additions,deductions:s.deductions};
 }
 
 function calculateAnnualTotal() {
@@ -760,7 +783,7 @@ function calculateAnnualTotal() {
 function calculateMonthlyTotalForMonth(year,month){
   const key=monthKey(year,month);
   const s=state.monthlySettings[key];
-  if(!s) return {base:0,totalOtPay:0,total:0};
+  if(!s) return {base:0,totalOtPay:0,perf:0,total:0};
   const base=getEffectiveBaseSalary(year,month)+getEffectiveAllowance(year,month);
   const hrBase=getEffectiveBaseSalary(year,month);
   const perf=parseFloat(s.performance)||0;
@@ -776,7 +799,9 @@ function calculateMonthlyTotalForMonth(year,month){
   }
   let adds=0; for(const it of(s.additions||[])) adds+=parseFloat(it.amount)||0;
   let deds=0; for(const it of(s.deductions||[])) deds+=parseFloat(it.amount)||0;
-  return {base,totalOtPay:otp,total:base+perf+otp+adds-hf-si-deds};
+  const preTaxTotal = base + perf + otp + adds - hf - si - deds;
+  const tax = calculateTax(preTaxTotal - 5000);
+  return {base,perf,totalOtPay:otp,tax,total:preTaxTotal-tax};
 }
 
 // ============================================================

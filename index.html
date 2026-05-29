@@ -1542,7 +1542,7 @@ function renderModules() {
 
   // Salary body
   const salBody = document.getElementById('body-salary');
-  if(salBody) salBody.innerHTML = `<div class="form-row"><div class="form-group"><label>底薪（元）</label><input type="number" id="baseSalary" placeholder="输入底薪" step="0.01" oninput="onGlobalBaseSalaryChange()"><div style="font-size:12px;color:var(--text-muted);margin-top:2px">输入一次后每月自动同步</div></div><div class="form-group"><label>补贴（元）</label><input type="number" id="allowance" placeholder="输入补贴" step="0.01" oninput="onGlobalAllowanceChange()"><div style="font-size:12px;color:var(--text-muted);margin-top:2px">输入一次后每月自动同步</div></div></div><div id="raiseSection" style="margin-bottom:10px"></div><div id="allowanceSection" style="margin-bottom:10px"></div><div class="hourly-rate" id="hourlyRate" style="margin-bottom:6px">时薪：¥0.00/小时（底薪÷21.75÷8）</div><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px"><label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-secondary)"><input type="radio" name="hourlyRateMode" value="auto" checked onchange="onHourlyRateModeChange()"> 底薪计算</label><label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-secondary)"><input type="radio" name="hourlyRateMode" value="manual" onchange="onHourlyRateModeChange()"> 手动填写</label><input type="number" id="manualHourlyRate" placeholder="手动时薪" step="0.01" oninput="onHourlyRateModeChange()" style="width:100px;padding:4px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;display:none"></div><div class="auto-calc"><span>加班费（自动计算）</span><span class="auto-value" id="autoOtPay">¥0.00</span></div><div class="form-group"><label>绩效 / 奖金</label><input type="number" id="performance" placeholder="输入绩效" step="0.01" oninput="onSalaryInput()"></div><div class="form-group"><label>公积金（个人缴纳）</label><input type="number" id="housingFund" placeholder="输入公积金" step="0.01" oninput="onSalaryInput()"></div><div class="form-group"><label>社保（个人缴纳）</label><input type="number" id="socialInsurance" placeholder="输入社保" step="0.01" oninput="onSalaryInput()"></div><div class="dynamic-items" id="otherAdditions"></div><button class="add-item-btn" onclick="addCustomItem('addition')">+ 添加加项</button><div class="dynamic-items" id="otherDeductions" style="margin-top:10px"></div><button class="add-item-btn" onclick="addCustomItem('deduction')">+ 添加扣项</button><div class="total-box"><div class="total-label">本月应发合计</div><div class="total-value" id="monthlyTotal">¥0.00</div><div class="total-detail" id="totalDetail"></div></div><div class="actual-paid"><label>实际发放工资（手动填写）</label><input type="number" id="actualPaid" placeholder="输入实际发放金额" step="0.01" oninput="onActualPaidChange()"></div><div class="btn-row"><button class="btn btn-outline" onclick="showIncomeDetail()">查看收入明细</button><button class="btn btn-primary" onclick="saveAll()">保存本月数据</button></div>`;
+  if(salBody) salBody.innerHTML = `<div class="form-row"><div class="form-group"><label>底薪（元）</label><input type="number" id="baseSalary" placeholder="输入底薪" step="0.01" oninput="onGlobalBaseSalaryChange()"><div style="font-size:12px;color:var(--text-muted);margin-top:2px">输入一次后每月自动同步</div></div><div class="form-group"><label>补贴（元）</label><input type="number" id="allowance" placeholder="输入补贴" step="0.01" oninput="onGlobalAllowanceChange()"><div style="font-size:12px;color:var(--text-muted);margin-top:2px">输入一次后每月自动同步</div></div></div><div id="raiseSection" style="margin-bottom:10px"></div><div id="allowanceSection" style="margin-bottom:10px"></div><div id="periodSection" style="margin-bottom:10px"></div><div class="hourly-rate" id="hourlyRate" style="margin-bottom:6px">时薪：¥0.00/小时（底薪÷21.75÷8）</div><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px"><label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-secondary)"><input type="radio" name="hourlyRateMode" value="auto" checked onchange="onHourlyRateModeChange()"> 底薪计算</label><label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--text-secondary)"><input type="radio" name="hourlyRateMode" value="manual" onchange="onHourlyRateModeChange()"> 手动填写</label><input type="number" id="manualHourlyRate" placeholder="手动时薪" step="0.01" oninput="onHourlyRateModeChange()" style="width:100px;padding:4px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:13px;display:none"></div><div class="auto-calc"><span>加班费（自动计算）</span><span class="auto-value" id="autoOtPay">¥0.00</span></div><div class="form-group"><label>绩效 / 奖金</label><input type="number" id="performance" placeholder="输入绩效" step="0.01" oninput="onSalaryInput()"></div><div class="form-group"><label>公积金（个人缴纳）</label><input type="number" id="housingFund" placeholder="输入公积金" step="0.01" oninput="onSalaryInput()"></div><div class="form-group"><label>社保（个人缴纳）</label><input type="number" id="socialInsurance" placeholder="输入社保" step="0.01" oninput="onSalaryInput()"></div><div class="dynamic-items" id="otherAdditions"></div><button class="add-item-btn" onclick="addCustomItem('addition')">+ 添加加项</button><div class="dynamic-items" id="otherDeductions" style="margin-top:10px"></div><button class="add-item-btn" onclick="addCustomItem('deduction')">+ 添加扣项</button><div class="total-box"><div class="total-label">本月应发合计</div><div class="total-value" id="monthlyTotal">¥0.00</div><div class="total-detail" id="totalDetail"></div></div><div class="actual-paid"><label>实际发放工资（手动填写）</label><input type="number" id="actualPaid" placeholder="输入实际发放金额" step="0.01" oninput="onActualPaidChange()"></div><div class="btn-row"><button class="btn btn-outline" onclick="showIncomeDetail()">查看收入明细</button><button class="btn btn-primary" onclick="saveAll()">保存本月数据</button></div>`;
 
   // Annual body
   const annBody = document.getElementById('body-annual');
@@ -1832,6 +1832,7 @@ function renderSalaryPanel() {
   if(manEl) { manEl.value = settings.manualHourlyRate||''; manEl.style.display = mode==='manual'?'':'none'; }
   renderRaiseSection();
   renderAllowanceSection();
+  renderPeriodSection();
   updateTotalsDisplay();
   renderDynamicItems('otherAdditions', settings.additions, 'addition');
   renderDynamicItems('otherDeductions', settings.deductions, 'deduction');
@@ -2145,6 +2146,57 @@ function removeAllowanceChange() {
   updateTotalsDisplay();
   renderCalendar();
   renderAnnualSummary();
+  saveState();
+}
+
+function renderPeriodSection() {
+  const section = document.getElementById('periodSection');
+  if (!section) return;
+  const { startDay, endDay } = getPeriodDays(state.year, state.month);
+  const hasOverride = !!state.monthlyPeriodOverrides[monthKey(state.year, state.month)];
+  const range = getPeriodRange(state.year, state.month);
+  const startStr = fmt(range.start);
+  const endStr = fmt(range.end);
+  if (hasOverride) {
+    section.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13px;color:var(--text-secondary)">结算周期：<strong style="color:var(--module-accent)">${startStr} ~ ${endStr}</strong></span><button onclick="editPeriod()" style="padding:3px 10px;font-size:12px;background:var(--bg-card-alt);color:var(--text-secondary);border:1px solid var(--border-color);border-radius:4px;cursor:pointer">修改</button><button onclick="removePeriodOverride()" style="padding:3px 10px;font-size:12px;background:var(--bg-card-alt);color:#e74c3c;border:1px solid var(--border-color);border-radius:4px;cursor:pointer">恢复默认</button></div>`;
+  } else {
+    section.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">结算周期：${startStr} ~ ${endStr}</div><button class="add-item-btn" onclick="togglePeriodInput()">✎ 自定义周期</button>`;
+  }
+}
+
+function togglePeriodInput() {
+  const section = document.getElementById('periodSection');
+  if (!section) return;
+  const { startDay, endDay } = getPeriodDays(state.year, state.month);
+  section.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13px;white-space:nowrap">每月</span><input type="number" id="periodStartDay" value="${startDay}" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid var(--module-accent);border-radius:4px;font-size:13px"><span style="font-size:13px;white-space:nowrap">日 ~ 次月</span><input type="number" id="periodEndDay" value="${endDay}" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid var(--module-accent);border-radius:4px;font-size:13px"><span style="font-size:13px;white-space:nowrap">日</span><button onclick="applyPeriod()" style="padding:5px 12px;background:var(--module-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;white-space:nowrap">确认</button><button onclick="cancelPeriod()" style="padding:5px 12px;background:var(--bg-card-alt);color:var(--text-secondary);border:1px solid var(--border-color);border-radius:4px;cursor:pointer;font-size:13px;white-space:nowrap">取消</button></div>`;
+}
+
+function editPeriod() { togglePeriodInput(); }
+
+function applyPeriod() {
+  const sd = parseInt(document.getElementById('periodStartDay').value);
+  const ed = parseInt(document.getElementById('periodEndDay').value);
+  if (!sd || !ed || sd < 1 || sd > 28 || ed < 1 || ed > 28) { alert('请输入有效的日期（1-28）'); return; }
+  const key = monthKey(state.year, state.month);
+  const hasOverride = !!state.monthlyPeriodOverrides[key];
+  if (hasOverride) {
+    state.monthlyPeriodOverrides[key] = { startDay: sd, endDay: ed };
+  } else {
+    state.periodStartDay = sd;
+    state.periodEndDay = ed;
+  }
+  renderPeriodSection();
+  renderAllContent();
+  saveState();
+}
+
+function cancelPeriod() { renderPeriodSection(); }
+
+function removePeriodOverride() {
+  const key = monthKey(state.year, state.month);
+  delete state.monthlyPeriodOverrides[key];
+  renderPeriodSection();
+  renderAllContent();
   saveState();
 }
 
